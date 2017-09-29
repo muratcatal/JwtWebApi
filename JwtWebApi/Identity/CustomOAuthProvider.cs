@@ -4,7 +4,9 @@ using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using JwtWebApi.EF;
 using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.OAuth;
@@ -17,17 +19,19 @@ namespace JwtWebApi.Identity
         {
             context.OwinContext.Response.Headers.Add("Access-Control-Allow-Origin", new[] { "*" });
 
-            //var user = context.OwinContext.Get<BooksContext>().Users.FirstOrDefault(u => u.UserName == context.UserName);
-            //if (!context.OwinContext.Get<BookUserManager>().CheckPassword(user, context.Password))
-            if (context.UserName != "murat")
+            using (MyDbContext dbContext = new MyDbContext())
             {
-                context.SetError("invalid_grant", "The user name or password is incorrect");
-                context.Rejected();
-                return Task.FromResult<object>(null);
+                var user = dbContext.Users.FirstOrDefault(u => u.UserName == context.UserName);
+                if (new PasswordHasher().VerifyHashedPassword(user.PasswordHash, context.Password) ==
+                    PasswordVerificationResult.Failed)
+                {
+                    context.SetError("invalid_grant", "The user name or password is incorrect");
+                    context.Rejected();
+                    return Task.FromResult<object>(null);
+                }
+                var ticket = new AuthenticationTicket(SetClaimsIdentity(context, user), new AuthenticationProperties());
+                context.Validated(ticket);
             }
-
-            var ticket = new AuthenticationTicket(SetClaimsIdentity(context, context.UserName), new AuthenticationProperties());
-            context.Validated(ticket);
 
             return Task.FromResult<object>(null);
         }
@@ -38,16 +42,21 @@ namespace JwtWebApi.Identity
             return Task.FromResult<object>(null);
         }
 
-        private static ClaimsIdentity SetClaimsIdentity(OAuthGrantResourceOwnerCredentialsContext context, string user)
+        private static ClaimsIdentity SetClaimsIdentity(OAuthGrantResourceOwnerCredentialsContext context, MyUser user)
         {
             var identity = new ClaimsIdentity("JWT");
-            identity.AddClaim(new Claim(ClaimTypes.Name, context.UserName + " catal tunca"));
+            identity.AddClaim(new Claim(ClaimTypes.Name, user.UserName));
             identity.AddClaim(new Claim("sub", context.UserName));
 
-            var userRoles = new string[] { "Admin" }; // context.OwinContext.Get<BookUserManager>().GetRoles(user.Id);
-            foreach (var role in userRoles)
+            using (MyDbContext dbContext = new MyDbContext())
             {
-                identity.AddClaim(new Claim(ClaimTypes.Role, role));
+                var userManager = new UserManager<MyUser>(new UserStore<MyUser>(dbContext));
+                var userRoles = userManager.GetRoles(user.Id);
+                foreach (var role in userRoles)
+                {
+                    identity.AddClaim(new Claim(ClaimTypes.Role, role));
+                }
+
             }
 
             return identity;

@@ -4,13 +4,16 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using JwtWebApi.EF;
+using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace JwtWebApi.Controllers
 {
     public class ValuesController : ApiController
     {
         // GET api/values
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Viewer")]
         public IEnumerable<string> Get()
         {
             return new string[] { "value1", "value2" };
@@ -19,7 +22,12 @@ namespace JwtWebApi.Controllers
         // GET api/values/5
         public string Get(int id)
         {
-            return "value";
+            var db = new MyDbContext();
+
+            new MyDbInitializer().InitializeDatabase(db);
+            var dbUsers = db.Users;
+
+            return "value " + dbUsers.Count();
         }
 
         // POST api/values
@@ -36,5 +44,6 @@ namespace JwtWebApi.Controllers
         public void Delete(int id)
         {
         }
+        
     }
 }
