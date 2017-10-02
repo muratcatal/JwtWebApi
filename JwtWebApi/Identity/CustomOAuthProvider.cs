@@ -25,7 +25,7 @@ namespace JwtWebApi.Identity
                 if (user == null || new PasswordHasher().VerifyHashedPassword(user.PasswordHash, context.Password) ==
                     PasswordVerificationResult.Failed)
                 {
-                    context.SetError("invalid_grant", "The user name or password is incorrect");
+                    context.SetError("invalid_grant", "The user name or password is incorrect.");
                     context.Rejected();
                     return Task.FromResult<object>(null);
                 }
