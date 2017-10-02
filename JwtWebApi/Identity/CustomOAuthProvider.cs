@@ -22,7 +22,7 @@ namespace JwtWebApi.Identity
             using (MyDbContext dbContext = new MyDbContext())
             {
                 var user = dbContext.Users.FirstOrDefault(u => u.UserName == context.UserName);
-                if (new PasswordHasher().VerifyHashedPassword(user.PasswordHash, context.Password) ==
+                if (user == null || new PasswordHasher().VerifyHashedPassword(user.PasswordHash, context.Password) ==
                     PasswordVerificationResult.Failed)
                 {
                     context.SetError("invalid_grant", "The user name or password is incorrect");
